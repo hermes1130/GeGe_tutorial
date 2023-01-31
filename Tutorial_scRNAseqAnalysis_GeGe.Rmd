@@ -12,9 +12,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 #### Required packages
-Please install the following packages before you start this tutorial: here, Seurat
+Please install the following packages before you start this tutorial: 
 
 * **here**: https://cran.r-project.org/web/packages/here/index.html
+
+* **dplyr**: https://www.r-project.org/nosvn/pandoc/dplyr.html
 
 * **Seurat**: https://satijalab.org/seurat/articles/install.html
 
@@ -34,6 +36,7 @@ Load the library here and Seurat package
 
 ```{r message=FALSE}
 library("here")
+library("dplyr")
 library("Seurat")
 ```
 
@@ -184,7 +187,7 @@ As next approach, we randomly permute a subset of the data (1% by default) and r
 Determine stastistical significance of PCA scores using JackStraw(), compute JackStraw scores significance using ScoreJAckStraw. JackStrawPlot() function provides a visualization tool for comparing the distribution of p-values for each PC with a uniform distribution (dashed line). ‘Significant’ PCs will show a strong enrichment of features with low p-values (solid curve above the dashed line).
 
 This takes up to 5 min
-```{r eval=FALSE}
+```{r}
 JS_hu <- JackStraw(hu_integ, dims = 50, num.replicate = 100)
 JS_hu <- ScoreJackStraw(JS_hu, dims = 1:50)
 JackStrawPlot(JS_hu, dims = c(1, 50))
@@ -210,7 +213,7 @@ ElbowPlot(ch_integ, ndims = 50)
 
 ## Excercises
 
-Where would you put the cutoff?
+Which PC should be the threshold to define the cutoff?
 
 Hint1: Some are difficult to distinguish from background noise for a dataset of this size without prior knowledge. We advise to set the cutoff on the higher side.
 Hint2: JackStrawPlot() may not return a clear PC cutoff, please focus on a sharp drop-off in significance.
@@ -248,27 +251,217 @@ ch_integ <- FindNeighbors(ch_integ, dims = 1:20)
 ch_integ <- FindClusters(ch_integ, resolution = 0.6)
 
 ```
+Look at cluster IDs of the first 5 cells and check how many clusters (=levels) are found.
 
-
-```{r eval = FALSE}
-tc_human_integ <- ScaleData(tc_human_integ, verbose = FALSE)
-tc_human_integ <- RunPCA(tc_human_integ, npcs = 20, verbose = FALSE)
-tc_human_integ <- RunTSNE(tc_human_integ, reduction = "pca", dims = 1:20)
-tc_human_integ <- FindNeighbors(tc_human_integ, reduction = "pca", dims = 1:20)
-tc_human_integ <- FindClusters(tc_human_integ, resolution = 0.6)
+```{r}
+head(Idents(hu_integ), 5)
+head(Idents(ch_integ), 5)
 ```
 
-```{r eval = FALSE}
-DimPlot(tc_human_integ, reduction = "tsne", group.by = "line")
-DimPlot(tc_human_integ, reduction = "tsne", label = TRUE, repel = TRUE)
+# Run non-linear dimensional reduction (UMAP/tSNE)
+
+Seurat offers two major non-linear dimensional reduction techniques, such as tSNE and UMAP, to visualize and explore these datasets. The goal of these algorithms is to learn the underlying manifold of the data in order to place similar cells together in low-dimensional space. Cells within the graph-based clusters determined above should co-localize on these dimension reduction plots. As input to the UMAP and tSNE, we'll use the same PCs as input to the clustering analysis.
+
+### UMAP (Uniform Manifold Approximation and Projection)
+
+```{r eval=FALSE}
+hu_integ <- RunUMAP(hu_integ, reduction = "pca", dims = 1:[number of pca of your choice])
+ch_integ <- RunUMAP(ch_integ, reduction = "pca", dims = 1:[number of pca of your choice])
+```
+
+```{r echo=FALSE }
+hu_integ <- RunUMAP(hu_integ, reduction = "pca", dims = 1:20)
+ch_integ <- RunUMAP(ch_integ, reduction = "pca", dims = 1:20)
+```
+
+```{r}
+DimPlot(hu_integ, reduction = "umap", group.by = "line")
+DimPlot(hu_integ, reduction = "umap", split.by = "line")
+DimPlot(hu_integ, reduction = "umap")
+
+DimPlot(ch_integ, reduction = "umap", group.by = "line")
+DimPlot(ch_integ, reduction = "umap", split.by = "line")
+DimPlot(ch_integ, reduction = "umap")
+```
+
+### tSNE (t-distributed stochastic neighbor embedding)
+
+```{r eval=FALSE}
+hu_integ <- RunTSNE(hu_integ, reduction = "pca", dims = 1:[number of pca of your choice])
+ch_integ <- RunTSNE(ch_integ, reduction = "pca", dims = 1:[number of pca of your choice])
+```
+
+```{r echo=FALSE }
+hu_integ <- RunTSNE(hu_integ, reduction = "pca", dims = 1:20)
+ch_integ <- RunTSNE(ch_integ, reduction = "pca", dims = 1:20)
+```
+
+```{r}
+DimPlot(hu_integ, reduction = "tsne", group.by = "line")
+DimPlot(hu_integ, reduction = "tsne", split.by = "line")
+DimPlot(hu_integ, reduction = "tsne")
+
+DimPlot(ch_integ, reduction = "tsne", group.by = "line")
+DimPlot(ch_integ, reduction = "tsne", split.by = "line")
+DimPlot(ch_integ, reduction = "tsne")
+
+```
+## Excercises
+
+1. Try to cluster the cells with a different number of PCs (10, 15, or even 50!). Do you observe a dramatic difference?
+
+2. What differences do you observe between UMAP and tSNE plot?
+
+# Identify conserved cell type markers
+
+Markers define clusters via differential expression. By default, it identifies positive and negative markers of a single cluster (specified in ident.1), compared to all other cells. FindAllMarkers() automates this process for all clusters, but you can also test groups of clusters vs. each other, or against all cells. The FindAllMarkers() function has three important arguments which provide thresholds for determining whether a gene is a marker:
+
+* **min.pct**: This determines the fraction of cells in either group the feature has to be expressed in to be included in the analysis. It's meant to remove lowly expressed genes. The default is 0.1 and this means at least 10 % of cells in cluster x or all other clusters must express the gene. The lower the value, the longer computing time. If this is set to high value, many false positive could be included due to the fact that not all genes are detected in all cells (even if it is expressed)
+
+* **min.diff.pct**: Minimum percent difference between the percent of cells expressing the gene in the cluster and the percent of cells expressing gene in all other clusters combined. This will downsample each identity class to have no more cells than whatever this is set to. The default is -Inf and this means no difference threshold is set. The lower the value, the longer computing time.  
+
+* **logfc.threshold**: Minimum log2 foldchange for average expression of gene in cluster relative to the average expression in all other clusters combined. The default is 0.25 and this means the average log2 foldchange should be at least 0.25. The lower the value, the longer computing time. If this is set to high value, many weak signals could be missed.
+
+For performing differential expression after integration, we switch back to the original
+```{r}
+DefaultAssay(hu_integ) <- "RNA"
+hu_integ
+
+DefaultAssay(ch_integ) <- "RNA"
+ch_integ
+```
+Now, find markers for every cluster compared to all remaining cells, report only the positive ones. 
+
+```{r}
+Markers_hu <- FindAllMarkers(hu_integ, only.pos = TRUE, min.pct = 0.25,  logfc.threshold = 0.25)
+Markers_hu
+Markers_ch <- FindAllMarkers(ch_integ, only.pos = TRUE, min.pct = 0.25,  logfc.threshold = 0.25)
+Markers_ch
+```
+Check if you have the average log2 foldchange lower than 0.25 and how many markers are detected in each cluster.
+
+```{r}
+sum(Markers_hu$avg_log2FC < 0.25)
+Markers_hu %>% count(cluster)
+sum(Markers_ch$avg_log2FC < 0.25)
+Markers_ch %>% count(cluster)
+```
+
+Let's take a look into the marker expression. For that, we'll collect top markers with lowest p-value per cluster
+
+```{r}
+top2_hu <- Markers_hu %>%
+  group_by(cluster) %>%
+  top_n(n = 2, wt = avg_log2FC)
+top2_hu
+
+top2_ch <- Markers_ch %>%
+  group_by(cluster) %>%
+  top_n(n = 2, wt = avg_log2FC)
+top2_ch
+```
+
+Seurat package provides several tools for visualizing marker expression. VlnPlot() (shows expression probability distributions across clusters), and FeaturePlot() (visualizes feature expression on a tSNE or PCA plot) are our most commonly used visualizations. Also, RidgePlot(), CellScatter(), and DotPlot() are available.
+
+Here, we look at the expression level of the top 2 markers with lowest p-value in cluster 0. In case of using FeaturePlot(), the default is set to umap reduction. 
+
+```{r}
+VlnPlot(hu_integ, features = top2_hu %>% filter(cluster %in% "0") %>% pull(-1))
+VlnPlot(ch_integ, features = top2_ch %>% filter(cluster %in% "0") %>% pull(-1))
+RidgePlot(hu_integ, features = top2_hu %>% filter(cluster %in% "0") %>% pull(-1))
+RidgePlot(ch_integ, features = top2_ch %>% filter(cluster %in% "0") %>% pull(-1))
+
+FeaturePlot(hu_integ, features = top2_hu %>% filter(cluster %in% "0") %>% pull(-1))
+DimPlot(hu_integ, reduction = "umap")
+FeaturePlot(ch_integ, features = top2_ch %>% filter(cluster %in% "0") %>% pull(-1))
+DimPlot(ch_integ, reduction = "umap")
+
+FeaturePlot(hu_integ, features = top2_hu %>% filter(cluster %in% "0") %>% pull(-1), reduction = "tsne")
+DimPlot(hu_integ, reduction = "tsne")
+FeaturePlot(ch_integ, features = top2_ch %>% filter(cluster %in% "0") %>% pull(-1), reduction = "tsne")
+DimPlot(ch_integ, reduction = "tsne")
+```
+Using Dotplot(), we can get a more comprehensive overview of marker expressions by providing the top 2 markers in all clusters. 
+
+```{r}
+DotPlot(hu_integ, features = unique(top2_hu %>%  pull(-1)), cols = c("blue", "red"), dot.scale = 8) +
+    RotatedAxis()
+DotPlot(ch_integ, features = unique(top2_ch %>%  pull(-1)), cols = c("blue", "red"), dot.scale = 8) +
+    RotatedAxis()
 ```
 
 ## Excercises
 
-1. Which method calls more significant genes, DESeq2 or edgeR?
+Play with the three major arguments of FindAllMarkers() function! For each task, check the computing time with Sys.time() and visualize the marker expression with a different number of top markers (2, 5, or even 10!)
 
-2. How many genes were called differentially expressed with both methods?
-Hint1: check out %in%
-Hint2: are p-values adjusted for both methods?
+1. Try to include more genes per cluster by adjusting the minimun value of the average log2 foldchange. Does it take longer than the code in the tutorial? How many markers are detected in each cluster? Do clusters contain more specific markers? 
 
-3. A venn diagram is also a good way to visualise overlap. Check out the eulerr package (Note, this package is not installed on the evop server, so work with your neighbor who has a PC or Mac).
+2. Try to include less genes per cluster by excluding lowly expressed genes with less than 50 % of cells in cluster x or all other clusters must express the gene. Does it take longer than the code in the tutorial? How many markers are detected in each cluster? Do clusters contain more specific markers? 
+
+3. Try to include more cluster-specifically expressed markers by adjusting the minimum difference between two groups. Does it take longer than the code in the tutorial? How many markers are detected in each cluster? Do clusters contain more specific markers? 
+
+# Assigning cell type identity to clusters
+
+After identifying cell type markers in each cluster, it's also important to assign cell type identity to clusters. Getting canonical markers to known cell types still challenging. Depending on source of cells, e.g. brain or heart, or species, e.g. human or drosophila, there're various databases and studies for markers. In this tutorial, we'll use a table containing cell types and corresponding markers based on a previous scRNA-seq study.
+
+Import the table containig marker information
+```{r}
+CTmarkers <- read.table("files/markers.txt", sep = "\t", header = T)
+dim(CTmarkers)
+head(CTmarkers)
+```
+We'll collect top 10 markers with lowest p-value and this will be compared with the imported table
+```{r}
+top10_hu <- Markers_hu %>%
+  group_by(cluster) %>%
+  top_n(n = 10, wt = avg_log2FC)
+top10_hu
+top10_ch <- Markers_ch %>%
+  group_by(cluster) %>%
+  top_n(n = 10, wt = avg_log2FC)
+top10_ch
+```
+We'll now create a custom function to search the most matching cell type to our markers. For each cluster, the function will check how often the top 10 markers match to certain cell types based on the imported table. The mostly matched cell type for each cluster will be returned. 
+
+
+```{r}
+CTretrieve <- function(x){
+  cluster <- c()
+  for(i in 1:length(levels(x$cluster))){
+    top10 <- x %>% filter(cluster %in% levels(x$cluster)[i]) %>% pull(-1)
+    cluster <- c(cluster, CTmarkers %>% 
+                  filter(gene %in% top10) %>% 
+                  count(cluster) %>% 
+                  arrange(desc(n)) %>% 
+                  slice(1) %>% 
+                  pull(1))
+  }
+  return(cluster)
+}
+
+CTretrieve(top10_hu)
+CTretrieve(top10_ch)
+```
+With this, we can rename our clusters. So far, they were 0, 1, 2, ...
+
+```{r}
+new.cluster.ids_hu <- CTretrieve(top10_hu)
+names(new.cluster.ids_hu) <- levels(hu_integ)
+hu_integ <- RenameIdents(hu_integ, new.cluster.ids_hu)
+DimPlot(hu_integ, reduction = "umap")
+DimPlot(hu_integ, reduction = "tsne")
+
+new.cluster.ids_ch <- CTretrieve(top10_ch)
+names(new.cluster.ids_ch) <- levels(ch_integ)
+ch_integ <- RenameIdents(ch_integ, new.cluster.ids_ch)
+DimPlot(ch_integ, reduction = "umap")
+DimPlot(ch_integ, reduction = "tsne")
+```
+
+
+Enough or should we add DE analysis?
+
+
+
+
+
