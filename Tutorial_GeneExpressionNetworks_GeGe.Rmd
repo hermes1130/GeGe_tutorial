@@ -1,5 +1,5 @@
 ---
-title: "Tutorial_GeneExpressionNetworks"
+title: "Tutorial on Gene Expression and Network Analysis"
 author: "Jeong-Eun Lee, Katja Nowick, and Deisy M. Gysi"
 output:
   html_document: 
@@ -14,26 +14,24 @@ knitr::opts_chunk$set(echo = TRUE)
 #### Required packages
 Please install the following packages before you start this tutorial:
 
-* **here**: https://cran.r-project.org/web/packages/here/index.html
+* `DESeq2`: https://bioconductor.org/packages/release/bioc/html/DESeq2.html
 
-* **DESeq2**: https://bioconductor.org/packages/release/bioc/html/DESeq2.html
+* `edgeR`: https://bioconductor.org/packages/3.8/bioc/html/edgeR.html
 
-* **edgeR**: https://bioconductor.org/packages/3.8/bioc/html/edgeR.html
+* `biomaRt`: https://bioconductor.org/packages/release/bioc/html/biomaRt.html
 
-* **biomaRt**: https://bioconductor.org/packages/release/bioc/html/biomaRt.html
+* `topGO`: https://bioconductor.org/packages/3.8/bioc/html/topGO.html
 
-* **topGO**: https://bioconductor.org/packages/3.8/bioc/html/topGO.html
+* `Rgraphviz`: https://bioconductor.org/packages/release/bioc/html/Rgraphviz.html
 
-* **Rgraphviz**: https://bioconductor.org/packages/release/bioc/html/Rgraphviz.html
+* `wTO`: https://cran.r-project.org/web/packages/wTO/index.html
 
-* **wTO**: https://cran.r-project.org/web/packages/wTO/index.html
-
-* **CoDiNA**: https://cran.r-project.org/web/packages/CoDiNA/index.html
+* `CoDiNA`: https://cran.r-project.org/web/packages/CoDiNA/index.html
 
 
 
 #### Tutorial files
-Please download a [GitHub repository](https://github.com/hermes1130/GeGe_tutorial) for both of tutorial days
+Please download/clone a [GitHub repository](https://github.com/hermes1130/GeGe_tutorial). This is a public repository, so please don't commit/push anything. Tutorial files are located in the `files` directory.
 
 # Short background for the dataset
 
@@ -51,12 +49,7 @@ library(rmarkdown)
 
 # Setup the read count metrices 
 
-Let's load the tutorial data. With the package **here** your current working directory will automatically be set where your script is located. 
-
-```{r, message=FALSE}
-library(here)
-```
-
+Let's load the tutorial data. 
 
 ```{r}
 readcounts=read.table("files/Tutorial_macaques_readcounts.txt", header=TRUE, row.names=1, sep="\t", stringsAsFactors=FALSE)
@@ -69,12 +62,12 @@ head(coldata)
 
 # Differential Gene Expression
 
-The input files for the differential gene expression analysis are count matrices after RNA-seq workflow, e.g figure below until **counting**. We now are going to run **differential gene expression analysis** in this tutorial by using two packages, **DEseq2 and edgeR**. **DESeq2** is a tool to test for differential expression by use of negative binomial generalized linear models; the estimates of dispersion and logarithmic fold changes incorporate data-driven prior distributions. Another commonly used package for calculating differential gene expression is **edgeR**. It uses empirical Bayes estimation and exact tests based on the negative binomial distribution to call differentially expressed genes. Both packages also provide their own tutorial pages, [DESeq2](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) and [edgeR](http://bioconductor.org/packages/devel/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf), including more details. If interested, please visit their tutorial pages :)
+The input files for the differential gene expression analysis are count matrices after RNA-seq workflow, e.g figure below until **counting**. We now are going to run **differential gene expression analysis** in this tutorial by using two packages, `DEseq2` and `edgeR.` `DESeq2` is a tool to test for differential expression by use of negative binomial generalized linear models; the estimates of dispersion and logarithmic fold changes incorporate data-driven prior distributions. Another commonly used package for calculating differential gene expression is `edgeR.` It uses empirical Bayes estimation and exact tests based on the negative binomial distribution to call differentially expressed genes. Both packages also provide their own tutorial pages, [DESeq2](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) and [edgeR](http://bioconductor.org/packages/devel/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf), including more details. If interested, please visit their tutorial pages :)
 
-![RNA-seq analysis workflow](https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-020-76881-x/MediaObjects/41598_2020_76881_Fig1_HTML.png?as=webp)
+![RNA-seq analysis workflow and tools ](https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-020-76881-x/MediaObjects/41598_2020_76881_Fig1_HTML.png?as=webp)
 
 ## DESeq
-Let's start with DEseq2 by loading the library
+Let's start with `DEseq2` by loading the library
 
 ```{r, message=FALSE}
 library("DESeq2")
@@ -86,11 +79,11 @@ The conditions treatment vs. control (LPS vs. NC) need to be defined as factors 
 coldata$condition = factor(coldata$condition)
 ```
 
-Alternatively you could have programmed:
-coldata\$condition = relevel(coldata\$condition, ref = 'NC')
+Alternatively, you could have programmed:
+`coldata$condition = relevel(coldata$condition, ref = 'NC')`
 to achieve the same thing.
 
-Make a DESeqDataSet object and look at it. It will hold the count information for each gene for each sample.
+Make a `DESeqDataSet` object and look at it. It will hold the count information for each gene for each sample.
 
 ```{r}
 dds=DESeqDataSetFromMatrix(countData = readcounts, colData = coldata, design = ~ condition)
@@ -107,7 +100,7 @@ dds
 ```
 ### Note on factor levels
 
-To specify the factors for the comparison use the function factor().
+To specify the factors for the comparison use the function `factor()`.
 In this first example, we will compare NC vs. LPS. 
 
 ```{r}
@@ -116,10 +109,10 @@ dds$condition = factor(dds$condition, levels = c("NC","LPS"))
 
 ### Differential expression analysis
 
-The function DESeq() implements all steps from normalization to the comparison:
-The first step is always normalization. It estimates the effective library size to normalize for it (estimateSizeFactors). Imagine, a gene has the same number of counts in two samples, but the library size (total number of reads) was twice as high in the first sample. Then we would conclude that the gene was higher expressed in the second sample.  
+The function `DESeq()` implements all steps from normalization to the comparison:
+The first step is always normalization. It estimates the effective library size to normalize for it (`estimateSizeFactors`). Imagine, a gene has the same number of counts in two samples, but the library size (total number of reads) was twice as high in the first sample. Then we would conclude that the gene was higher expressed in the second sample.  
 
-The core assumption for calculating the dispersion (estimateDispersions) is that the mean is a good predictor of the variance, i.e., that genes with a similar expression level also have similar variance across replicates.  
+The core assumption for calculating the dispersion (`estimateDispersions`) is that the mean is a good predictor of the variance, i.e., that genes with a similar expression level also have similar variance across replicates.  
 
 Then differential expression will be calculated using the (default) Wald test. This is followed by (per default) Benjamini-Hochberg adjustment of p-values.  
 
@@ -169,13 +162,13 @@ summary(result005)
 
 ### Exploring results
 
-plotMA() is used for plotting log2 Fold changes vs. mean expression values (baseMean) for all genes. Genes with p<0.1 are shown in blue Points with smaller or larger values than the y-axis are shown as triangles.
+`plotMA()` is used for plotting log2 Fold changes vs. mean expression values (baseMean) for all genes. Genes with p<0.1 are shown in blue Points with smaller or larger values than the y-axis are shown as triangles.
 
 ```{r}
 plotMA(result, ylim=c(-2,2))
 ```
 
-When the shrunken results are plotted with plotMA(), you can see that the noise from lowly expressed genes is reduced.
+When the shrunken results are plotted with `plotMA()`, you can see that the noise from lowly expressed genes is reduced.
 
 ```{r}
 plotMA(resultLFC, ylim=c(-2,2))
@@ -197,7 +190,7 @@ write.csv(as.data.frame(resultOrdered), file="DESeq2_DEgenes_condition_LPS_NC.cs
 
 ## edgeR
 
-Let's do the same but using edgeR package. Please load the edgeR library.
+Let's do the same but using `edgeR` package. Please load the `edgeR` library.
 
 ```{r, message=FALSE}
 library("edgeR")
@@ -213,7 +206,7 @@ count_edgeR_obj
 
 ### Normalization
 
-edgeR uses the quantile-adjusted conditional maximum likelihood (qCML) method 
+`edgeR` uses the quantile-adjusted conditional maximum likelihood (qCML) method 
 to estimate the dispersion(s) before comparing two groups of samples. 
 It first determines the common dispersion and then the dispersion for each gene. 
 For the gene-wise dispersion, it implements an empirical Bayes strategy 
@@ -227,7 +220,7 @@ count_edgeR_obj=estimateTagwiseDisp(count_edgeR_obj)
 
 ### Calculating differential expression
 
-edgR uses something similar to a Fisher's exact test and is based on the qCML method. Per default it will adjust the p-values with the Benjamini-Hochberg method.  
+`edgR` uses something similar to a Fisher's exact test and is based on the qCML method. Per default it will adjust the p-values with the Benjamini-Hochberg method.  
 Takes a few seconds.  
 Then look at the resulting object.
 
@@ -236,7 +229,7 @@ edgeR_DEgenes=exactTest(count_edgeR_obj)
 edgeR_DEgenes
 ```
 
-The function topTags() is used to show the top differentially expressed genes (default: based on p-value).
+The function `topTags()` is used to show the top differentially expressed genes (default: based on p-value).
 
 ```{r}
 topTags(edgeR_DEgenes)
@@ -248,8 +241,8 @@ To show the top differentially expressed genes based on fold change use:
 topTags(edgeR_DEgenes, sort.by = "logFC")
 ```
 
-As seen above, the edgeR_DEgenes object contains multiple elements. 
-The first one is the table with logFC, logCPM, and p-values for each gene. 
+As seen above, the `edgeR_DEgenes` object contains multiple elements. 
+The first one is the table with `logFC`, `logCPM`, and `p-values` for each gene. 
 To get access to this table and assign it to a new variable, call:
 
 ```{r}
@@ -274,22 +267,22 @@ write.csv(as.data.frame(edgeR_DEgenesTable), file="edgeR_DEgenes_condition_LPS_N
   
 ## Excercises
 
-1. Which method calls more significant genes, DESeq2 or edgeR?
+1. Which method calls more significant genes, `DESeq2` or `edgeR`?
 
 2. How many genes were called differentially expressed with both methods?
-Hint1: check out %in%
+Hint1: check out `%in%`
 Hint2: are p-values adjusted for both methods?
 
-3. A venn diagram is also a good way to visualise overlap. Check out the eulerr package (Note, this package is not installed on the evop server, so work with your neighbor who has a PC or Mac).
+3. A venn diagram is also a good way to visualize overlap. Check out the `eulerr` package (Note, this package is not included for pre-installation before the tutorial, so work with your neighbor who has faster machine to install this package).
   
     
     
 # Differential expression analysis with multi-factor designs (DEseq2)
 
-Experiments with more than one factor influencing the counts can be analyzed using design formula that include the additional variables. In fact, DESeq2 can analyze any possible experimental design that can be expressed with fixed effects terms (multiple factors, designs with interactions, designs with continuous variables, splines, and so on are all possible).
+Experiments with more than one factor influencing the counts can be analyzed using design formula that include the additional variables. In fact, `DESeq2` can analyze any possible experimental design that can be expressed with fixed effects terms (multiple factors, designs with interactions, designs with continuous variables, splines, and so on are all possible).
 
-Look with colData() at your DESeq2 object to see the different factors of the experimental design. Individuals belong to different study groups (the groups are like experimental replicates). Within each group, individuals are of different ranks.  
-With unique() you can then ask for a list of all study groups or ranks, respectively.
+Look with `colData()` at your `DESeq2` object to see the different factors of the experimental design. Individuals belong to different study groups (the groups are like experimental replicates). Within each group, individuals are of different ranks.  
+With `unique()` you can then ask for a list of all study groups or ranks, respectively.
 
 ```{r}
 colData(dds)
@@ -297,14 +290,14 @@ unique(colData(dds)$study_group)
 unique(colData(dds)$rank)
 ```
 
-In contrast to what we did before, we now want to take the ranks of the indivudals into account for comparing treatment vs. control.
+In contrast to what we did before, we now want to take the ranks of the individuals into account for comparing treatment vs. control.
 Therefore, ranks needs to be converted to factors:
 
 ```{r}
 coldata$rank = as.factor(coldata$rank)
 ```
 
-We make a new DESeqDataSet object. It will hold the count information for each gene for each sample.
+We make a new `DESeqDataSet` object. It will hold the count information for each gene for each sample.
 
 ```{r}
 dds_interact=DESeqDataSetFromMatrix(countData = readcounts, 
@@ -338,7 +331,7 @@ dds_interact = DESeq(dds_interact)
 results(dds_interact)
 ```
 
-To show the comparisons that were done use the function resultNames() on the DESeq object.
+To show the comparisons that were done use the function `resultNames()` on the `DESeq` object.
 
 ```{r}
 resultsNames(dds_interact)
@@ -346,17 +339,15 @@ resultsNames(dds_interact)
 
 ###Excercises
 
-Perform the following five comparisons. To do so, check the help for ?results. Hint: Most important are to see what the contrast argument wants and the examples at the bottom of the help pages.
+Perform the following five comparisons. To do so, check the help for `?results`. Hint: Most important are to see what the contrast argument wants and the examples at the bottom of the help pages.
 
 1. The main effect (treatment vs. control) for first group (Rank 1). 
 
 2. Rank 1 vs. Rank 5. 
 
-3. The condition effect for Rank 2 (takes a few seconds).
-This is the main effect plus the interaction term.
+3. The condition effect for Rank 2 (takes a few seconds). This is the main effect plus the interaction term.
 
-4. Interaction term for condition effect in Rank 2 vs. Rank 5 to find out whether
-the condition effect is different between these two ranks.
+4. Interaction term for condition effect in Rank 2 vs. Rank 5 to find out whether the condition effect is different between these two ranks.
 
 5. How many genes differ in their change between treatment vs. control between Rank 2 and Rank 5? Hint: To summarize the results and see what the columns in the results object mean, you need to assign the output of results to a variable.
 
@@ -366,13 +357,13 @@ the condition effect is different between these two ranks.
 
 ## Building weighted topological overlap (wTO) networks
 
-wTO package uses a method computing the Weighted Topological Overlap with positive and negative signs (wTO) networks given a data frame containing the **mRNA count/ expression/ abundance per sample**, and a vector containing the **interested nodes** of interaction (a subset of the elements of the full data frame). Simply said, we will make a transcription factor (TF = interested nodes) wTO network for control samples (NC = expression) and one for the treatment samples (LPS = expression) separately. We will only consider differentially expressed genes, which will help to reduce runtime.  
+`wTO` package uses a method computing the Weighted Topological Overlap with positive and negative signs (wTO) networks given a data frame containing the **mRNA count/ expression/ abundance per sample**, and a vector containing the **interested nodes** of interaction (a subset of the elements of the full data frame). Simply said, we will make a transcription factor (TF = interested nodes) wTO network for control samples (NC = expression) and one for the treatment samples (LPS = expression) separately. We will only consider differentially expressed genes, which will help to reduce run time.  
 
-We will in the next chapter compare these two wTO networks using CoDiNA, a visualization tool for the networks.
+We will in the next chapter compare these two wTO networks using `CoDiNA`, a visualization tool for the networks.
 
 ![The wTO package workflow](https://media.springernature.com/lw685/springer-static/image/art%3A10.1186%2Fs12859-018-2351-7/MediaObjects/12859_2018_2351_Fig1_HTML.png?as=webp)
 
-Now, let's load the wTO package.
+Now, let's load the `wTO` package.
 
 
 ```{r}
@@ -414,7 +405,7 @@ NC = subset(NC, row.names(NC) %in% DE_genes)
 LPS = subset(LPS, row.names(LPS) %in% DE_genes)
 ```
 
-We want to make a TF wTO network. Thus, we need to retrieve the information about TF genes. The list of TFs is in the file "TFs.txt". Let's read this file into our R session.
+We want to make a TF wTO network. Thus, we need to retrieve the information about TF genes. The list of TFs is in the file `TFs.txt`. Let's read this file into our R session.
 
 ```{r}
 TFs = read.table("files/TFs.txt", header=TRUE, sep="\t", stringsAsFactors=FALSE)
@@ -423,44 +414,44 @@ TFs = TFs[,1]
 length(TFs)[[1]]
 ```
 
-We obtained 1834 TFs. However, their IDs are GeneSymbols, while our table with readcounts used Ensembl gene IDs. So, we cannot easily match these IDs to identify the TFs in our LPS and NC tables.  
-We will thus take a short digression into Biomart, with which we can annotate our genes. Here, we want to change all Ensembl gene IDs in the LPS and NC tables to GeneSymbols. This way, we can match them with the TF table and our resulting network will display the TF GeneSymbols at the nodes.
+We obtained 1834 TFs. However, their IDs are `GeneSymbols`, while our table with readcounts used Ensembl gene IDs. So, we cannot easily match these IDs to identify the TFs in our LPS and NC tables.  
+We will thus take a short digression into `Biomart`, with which we can annotate our genes. Here, we want to change all Ensembl gene IDs in the LPS and NC tables to `GeneSymbols`. This way, we can match them with the TF table and our resulting network will display the TF `GeneSymbols` at the nodes.
 
 ### Gene annotation
 
-Load the R package biomaRt.
+Load the R package `biomaRt`.
 
 ```{r}
 library(biomaRt)
 ```
 
-We first have to choose a Mart and a Dataset.  
-The function listMarts() shows all available Marts. We need ensembl.  
+We first have to choose a `Mart` and a `Dataset`.  
+The function `listMarts()` shows all available Marts. We need ensembl.  
 
 ```{r}
 listMarts()
 ensembl=useMart("ensembl")
 ```
 
-We also need to select the right species. listDatasets() will show all available species. Because that list is very long, it is not printed in tis tutorial. We need to pick the dataset for rhesus macaque (mmulatta_gene_ensembl).  
-Then we can build our Mart with the function useDataset().
+We also need to select the right species. `listDatasets()` will show all available species. Because that list is very long, it is not printed in tis tutorial. We need to pick the dataset for rhesus macaque (`mmulatta_gene_ensembl`).  
+Then we can build our `Mart` with the function `useDataset()`.
 
 ```{r, results='hide'}
 listDatasets(ensembl)
 mart = useDataset("mmulatta_gene_ensembl", useMart("ensembl"))
 ```
 
-We want to convert the Ensembl Gene IDs of all expressed genes into GeneSymbols ("external gene names").  
+We want to convert the Ensembl Gene IDs of all expressed genes into `GeneSymbols` (`external_gene_name`).  
 The list of all expressed genes is contained in the row names of the result object.  
-The information we can retrieve is stored in Biomart as attributes. The function listAttributes() prints all available attributes. This long list of attributes is not printed in this tutorial. Have a look at what information you could retrieve.
-We need to pick the external gene names.  
+The information we can retrieve is stored in `Biomart` as attributes. The function `listAttributes()` prints all available attributes. This long list of attributes is not printed in this tutorial. Have a look at what information you could retrieve.
+We need to pick the `external_gene_name`.  
 
 ```{r, results='hide'}
 expressedGenes=row.names(result)
 listAttributes(mart)
 ```
 
-Now we can use getBM() with the right filters, attributes, and values. Our filters are to take only genes with an Ensemble Gene ID. Our attributes say that we want to retrieve the Ensemble Gene IDs and the external gene names. Values specifies that we only want this information for the expressed genes.  
+Now we can use `getBM()` with the right filters, attributes, and values. Our filters are to take only genes with an `ensembl_gene_id`. Our attributes say that we want to retrieve the `ensembl_gene_id` and the `external_gene_name`. Values specifies that we only want this information for the expressed genes.  
 This takes about one minute.
 
 ```{r}
@@ -469,10 +460,10 @@ dim(GeneSymbols)
 head (GeneSymbols)
 ```
 
-The table GeneSymbols has two columns, with which we can now match or substitute Ensembl IDs by GeneSymbols in the LPS and NC tables.  
+The table `GeneSymbols` has two columns, with which we can now match or substitute `ensembl_gene_id` by `GeneSymbols` in the LPS and NC tables.  
 Note, some genes do not have a Gene symbol but an "NA" instead. Also,
 some genes are duplicated (representing different isoforms).
-We are now reformating our LPS and NC tables such that they will contain GeneSymbols. We will use the package plyr for that.
+We are now reformating our LPS and NC tables such that they will contain `GeneSymbols`. We will use the package `plyr` for that.
 
 ```{r, message=FALSE}
 require(plyr) 
@@ -522,7 +513,7 @@ head(NC)
 Now we have gathered all information to construct the networks. wTO performs a bootstrapping analysis to evaluate how likely it is that an infered link is real. Note, that in a real analysis, you should run 1000 bootstraps, i.e. n should be 1000. Here we will run it only with n=10 to save time.
 
 #### First, constructing the NC network
-TFs will be the nodes, correlations will be calculated for all TFs with all expressed genes. The expressed genes should be subsetted by the TFs. The output, network_NC, will be an object with information on nodes, signed and absolute wTO values and p-values.  
+TFs will be the nodes, correlations will be calculated for all TFs with all expressed genes. The expressed genes should be subsetted by the TFs. The output, `network_NC`, will be an object with information on nodes, signed and absolute wTO values and p-values.  
 This should take less than 5 minutes.
 
 ```{r}
@@ -577,13 +568,13 @@ hist(network_NC$wTO)
 
 ## Comparing networks with CoDiNA
 
-We will now compare the TF wTO networks for NC and LPS. Load the CoDiNA package.
+We will now compare the TF wTO networks for NC and LPS. Load the `CoDiNA` package.
 
 ```{r, message=FALSE}
 require(CoDiNA)
 ```
 
-The function MakeDiffNet for comparing networks needs a list of the networks to be compared and the Code (= the name of each network).
+The function `MakeDiffNet()` for comparing networks needs a list of the networks to be compared and the Code (= the name of each network).
 The node names need to be converted to characters before.
 
 ```{r}
@@ -594,7 +585,7 @@ Diff_LPS_NC = MakeDiffNet(Data = list(network_NC, network_LPS),
                           Code = c('NC', 'LPS'))
 ```
 
-The resulting object, Diff_LPS_NC contains the information on the number of nodes and links in the differential network. It also contains the category of each link, it's subcategory and the scores. To look at the table with that information, you can use the function View().
+The resulting object, `Diff_LPS_NC` contains the information on the number of nodes and links in the differential network. It also contains the category of each link, it's subcategory and the scores. To look at the table with that information, you can use the function `View()`.
 
 ```{r}
 Diff_LPS_NC
@@ -611,10 +602,10 @@ Diff_LPS_NC_clean
 
 ### Classifying the nodes (genes) of the differential network
 
-The function ClusterNodes() needs three parameters:  
+The function `ClusterNodes()` needs three parameters:  
 The cleaned network (i.e. the network after the filtering above),  
-The external cutoff (i.e. the minimum value for the Score_Phi_tilde; the closer you set this cutoff to one, the less nodes you will get),  
-and the internal cutoff (i.e. the minimum value for the Score_internal; the closer you set this cutoff to zero, the less nodes you will get).  
+The external cutoff (i.e. the minimum value for the `Score_Phi_tilde`; the closer you set this cutoff to one, the less nodes you will get),  
+and the internal cutoff (i.e. the minimum value for the `Score_internal`; the closer you set this cutoff to zero, the less nodes you will get).  
 Because our network is already filtered, we can use the external value as 0, and the internal as 1. This will make all nodes of the clean network to be clustered.
 
 ```{r}
@@ -631,7 +622,7 @@ barplot(table(DiffNodes$Phi_tilde))
 ```
 
 Plotting the network. In this tutorial, the information used for making the plot is not printed. But it should show up on your screen.
-You can click on the nodes to see the GeneSymbol or filter for node categories.
+You can click on the nodes to see the `GeneSymbol` or filter for node categories.
 
 ```{r, results='hide'}
 plot(Diff_LPS_NC_clean, layout = 'layout_with_drl')
@@ -666,16 +657,16 @@ write.table(LPS_genes, 'CoDiNA_LPS.txt', quote = F, row.names = F)
 
 ### Excercise
 
-1. Make a wTO network (one for NC and one for LPS) that has all differentially expressed genes as nodes taking into account only all differentially expressed genes. Compare the networks using CoDiNA. How many nodes are common, LPS specific, or NC specific? Save a list of their gene names.
+1. Make a wTO network (one for NC and one for LPS) that has all differentially expressed genes as nodes taking into account only all differentially expressed genes. Compare the networks using `CoDiNA`. How many nodes are common, LPS specific, or NC specific? Save a list of their gene names.
 
 
 # Gene Ontology (GO) Enrichment analysis
 
-In this part, we will test if the differentially expressed genes are enriched for particular functional categories using GO enrichment analysis with the package TopGO. As a prerequisite, we will need to retrieve the GO ID information for all expressed genes and for DE genes with biomaRt. Then we can run a statistical test for enrichment.
+In this part, we will test if the differentially expressed genes are enriched for particular functional categories using GO enrichment analysis with the package `TopGO`. As a prerequisite, we will need to retrieve the GO ID information for all expressed genes and for DE genes with `biomaRt`. Then we can run a statistical test for enrichment.
 
 ## Getting GO information with biomaRt
-Load the library biomaRt (if you haven't done so before).
-Choose a Mart and a Dataset (the output is not printed in this tutorial). We can use the human gene annotation for rhesus macaque genes because of their close evolutionary relationship.
+Load the library `biomaRt` (if you haven't done so before).
+Choose a `Mart` and a `Dataset` (the output is not printed in this tutorial). We can use the human gene annotation for rhesus macaque genes because of their close evolutionary relationship.
 
 ```{r, results='hide'}
 listMarts()
@@ -684,7 +675,7 @@ listDatasets(ensembl)
 mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
 ```
 
-We already got the list of all expressed genes before. It's in the variable GeneSymbols. We want the gene symbols (column 2) and still need to remove duplicates from it using unique().
+We already got the list of all expressed genes before. It's in the variable GeneSymbols. We want the gene symbols (column 2) and still need to remove duplicates from it using `unique()`.
 
 ```{r}
 head (GeneSymbols)
@@ -695,7 +686,7 @@ length(uniqGenesymbols)
 ```
 
 The unique gene symbol list is about one third shorter.  
-We use that list to get the GO IDs with Biomart.
+We use that list to get the GO IDs with `Biomart`.
 
 ```{r}
 GeneGONames = getBM(filters= "hgnc_symbol", attributes= c("hgnc_symbol", "go_id"),values=uniqGenesymbols, mart= mart)
@@ -703,15 +694,15 @@ GeneGONames = getBM(filters= "hgnc_symbol", attributes= c("hgnc_symbol", "go_id"
 
 ## Enrichment analysis with TopGO
 
-Load the library TopGO. 
+Load the library `TopGO`. 
 ```{r, message=FALSE}
 library("topGO")
 ```
 
-To create a topGOdata object for the enrichment analysis we need a list of all genes, the significant genes, and the Genes2GO mapping.
-The list of all genes is contained in the uniqGenesymbols from above. The
-DE_genes are still in Ensembl IDs, so we need to retrieve their gene symbols.
-This could again be done with Biomart or by subsetting from GeneSymbols, which we will do here.
+To create a `topGOdata` object for the enrichment analysis we need a list of all genes, the significant genes, and the Genes2GO mapping.
+The list of all genes is contained in the `uniqGenesymbols` from above. The
+`DE_genes` are still in Ensembl IDs, so we need to retrieve their gene symbols.
+This could again be done with `Biomart` or by subsetting from `GeneSymbols`, which we will do here.
 
 ```{r}
 head(GeneSymbols)
@@ -752,7 +743,7 @@ Genes2GOmap=readMappings(file = "Genes2Go.txt")
 str(head(Genes2GOmap))
 ```
 
-Now we can build the topGOdata object.
+Now we can build the `topGOdata` object.
 In this example, we will test for Molecular Functions (MF).
 It will take a few seconds.
 
@@ -760,9 +751,9 @@ It will take a few seconds.
 GOdata = new("topGOdata", ontology = "MF", allGenes = geneList, annot = annFUN.gene2GO, gene2GO = Genes2GOmap)
 ```
 
-The topGOdata object holds information about the ontology to analyze, number of genes and DE genes.
+The `topGOdata` object holds information about the ontology to analyze, number of genes and DE genes.
 Note that not all genes have GO information, which is why the number of feasible genes is smaller.
-Also the information about the GO graph is contained in the topGOdata object:
+Also the information about the GO graph is contained in the `topGOdata` object:
 
 ```{r}
 GOdata
@@ -794,7 +785,7 @@ sigGOIDscorrected = cbind(sigGOIDs, qval)
 head(sigGOIDscorrected, n=30)
 ```
 
-Finally, we can plot a GO graph for the most significant GO groups. This will require the package Rgraphviz.
+Finally, we can plot a GO graph for the most significant GO groups. This will require the package `Rgraphviz`.
 
 ```{r}
 library("Rgraphviz")

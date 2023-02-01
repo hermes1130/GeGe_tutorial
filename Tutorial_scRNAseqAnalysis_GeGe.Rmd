@@ -1,5 +1,5 @@
 ---
-title: "Tutorial_scRNAseqAnalysis"
+title: "Tutorial on Seurat package for analyzing scRNA-seq datasets"
 author: "Jeong-Eun Lee and Melanie Sarfert"
 output:
   html_document: 
@@ -14,41 +14,32 @@ knitr::opts_chunk$set(echo = TRUE)
 #### Required packages
 Please install the following packages before you start this tutorial: 
 
-* **here**: https://cran.r-project.org/web/packages/here/index.html
+* `dplyr`: https://www.r-project.org/nosvn/pandoc/dplyr.html
 
-* **dplyr**: https://www.r-project.org/nosvn/pandoc/dplyr.html
-
-* **Seurat**: https://satijalab.org/seurat/articles/install.html
+* `Seurat`: https://satijalab.org/seurat/articles/install.html
 
 #### Tutorial files
-Please download a [GitHub repository](https://github.com/hermes1130/GeGe_tutorial) for both of tutorial days
+Please download/clone a [GitHub repository](https://github.com/hermes1130/GeGe_tutorial). This is a public repository, so please don't commit/push anything. Tutorial files are located in the `files` directory.
 
 
 # Short background for the dataset
 
-For this tutorial, we will be analyzing the a dataset of scRNA-seq (10x Genomics) to profile cell composition across a time course of human/chimpanzee organoid development from pluripotency to four months using embryonic stem cells (H9) and iPSC (409b2) lines and chimpanzee iPSC (Sandra/SandraA) lines ([Kanton et al. 2019](https://www.nature.com/articles/s41586-019-1654-9)). This means, the dataset contains multiple readcount metrics per cells including the timepoint 
+For this tutorial, we will be analyzing the a dataset of scRNA-seq (10x Genomics) to profile cell composition across a time course of human/chimpanzee organoid development from pluripotency to four months using embryonic stem cells (H9) and iPSC (409b2) lines and chimpanzee iPSC (Sandra/SandraA) lines ([Kanton et al. 2019](https://www.nature.com/articles/s41586-019-1654-9)). This means, the dataset contains multiple readcount metrics per cells including developmental time information. Please take a look at the figure a below.
 
 ![Differentiation of human and chimpanzee cerebral organoids.](https://media.springernature.com/full/springer-static/esm/art%3A10.1038%2Fs41586-019-1654-9/MediaObjects/41586_2019_1654_Fig5_ESM.jpg?as=webp)
 
 # Setup the Seurat Object
 
-Load the library here and Seurat package
+Load the libraries that we need for today's tutorial
 
 ```{r message=FALSE}
-library("here")
 library("dplyr")
 library("Seurat")
 ```
 
-We start by reading in the data. The readRDS() function reads Large Seurat files in the output of the Seurat pipeline, returning a S4 SeuratObject. The values in assays represent the multiple read count tables for each feature (i.e. gene; row) that are detected in each cell (column). For example, hu[["RNA"]]\@counts
+We start by reading in the data. The `readRDS()` function reads Large Seurat files in the output of the Seurat pipeline, returning a S4 SeuratObject. The values in assays represent the multiple read count tables for each feature (i.e. gene; row) that are detected in each cell (column). 
 
 Let's import the rds files using here 
-```{r eval = FALSE}
-hu <- readRDS("files/timecourse_human_singlecells_GRCh38.rds")
-hu <- subset(x = hu, downsample = 100, invert = TRUE)
-#100 cells in each cell type and remove idents with invert
-```
-
 ```{r cars}
 hu <- readRDS("files/Tutorial_tc_human_integ_RNAassay.rds")
 hu
@@ -56,7 +47,7 @@ hu
 ch <- readRDS("files/Tutorial_tc_chimp_integ_RNAassay.rds")
 ch
 ```
-Explore the Large Seurat objects
+Explore the `Large Seurat` objects. Reading the readcount metrics using, e.g. `hu[["RNA"]]@counts`, will return many dots, meaning zero values. To see some actual values, we'll look at the first 10 columns and 30 rows in case of human dataset and the first 10 columns and 200th-230th rows in case of chimpanzee dataset.
 
 ```{r}
 head(hu@meta.data, 5)
@@ -66,7 +57,7 @@ head(ch@meta.data, 5)
 ch[["RNA"]]@counts[1:10, 200:230]
 ```
 
-As you see, those rds files are already pre-processed, for instance cell lines are already integrated and the linear/non-linear dimensional reduction has already been performed. We'll now split the datasets, so we can practice the whole process to learn how to run a standard Seurat clustering pipeline.
+As you see, those `rds` files are already pre-processed, for instance cell lines are already integrated (the `line` column has two cell line names when running `head(hu\@meta.data, 5)`) and the linear/non-linear dimensional reduction has already been performed (`2 dimensional reductions calculated: pca, tsne` are stored when running `hu`). We'll now split the datasets, so we can practice the whole process to learn how to run a standard Seurat clustering pipeline starting with integration.
 
 Split the dataset into a list of two seurat objects by cell line.
 ```{r}
@@ -76,11 +67,11 @@ Split_ch <- SplitObject(ch, split.by = "line")
 Split_ch
 ```
 
-After spliting cell lines from the dataset, the next step is to normalize the data. By default, we employ a global-scaling normalization method “LogNormalize” that normalizes the feature expression measurements for each cell by the total expression, multiplies this by a scale factor (10,000 by default), and log-transforms the result. Normalized values are stored in NorFea_hu$H9[["RNA"]]\@data. 
+After spliting cell lines from the dataset, the next step is to normalize the data. By default, we employ a global-scaling normalization method `LogNormalize` that normalizes the feature expression measurements for each cell by the total expression, multiplies this by a scale factor (10,000 by default), and log-transforms the result. Normalized values are stored in `NorFea_hu$H9[["RNA"]]@data`. 
 
-We next calculate a subset of features that exhibit high cell-to-cell variation in the dataset (i.e, they are highly expressed in some cells, and lowly expressed in others). Focusing on these genes in downstream analysis helps to highlight biological signal in single-cell datasets. This is implemented in the FindVariableFeatures() function. By default, we return 2,000 features per dataset. These will be used in downstream analysis, like PCA.
+We next calculate a subset of features that exhibit high cell-to-cell variation in the dataset (i.e, they are highly expressed in some cells, and lowly expressed in others). Focusing on these genes in downstream analysis helps to highlight biological signal in single-cell datasets. This is implemented in the `FindVariableFeatures()` function. By default, we return 2,000 features per dataset. These will be used in downstream analysis, like PCA.
 
-The normalization and identification of variable features for each dataset independently will be done in one commmend using laaply(). 
+The normalization and identification of variable features for each dataset independently will be done in one commend using `laaply()`. By running the function `VariableFeaturePlot()`, we can view the variable features. In this tutorial, we'll see the 10 most variable features.
 
 ```{r warning = FALSE}
 NorFea_hu <- lapply(X = Split_hu, FUN = function(x) {
@@ -123,7 +114,7 @@ head(features_c, n = 10)
 
 # Perform integration
 
-We then identify anchors using the FindIntegrationAnchors() function, which takes a list of Seurat objects as input, and use these anchors to integrate the two datasets together with IntegrateData(). 
+We then identify anchors using the `FindIntegrationAnchors()` function, which takes a list of `Seurat` objects as input, and use these anchors to integrate the two datasets together with `IntegrateData()`. 
 
 ```{r}
 anchors_hu <- FindIntegrationAnchors(object.list = NorFea_hu, anchor.features = features_h)
@@ -132,7 +123,7 @@ anchors_ch <- FindIntegrationAnchors(object.list = NorFea_ch, anchor.features = 
 anchors_ch
 ```
 
-We then pass these anchors to the IntegrateData() function, which returns a Seurat object.
+We then pass these anchors to the `IntegrateData()` function, which returns a `Seurat` object.
 
 The returned object will contain a new Assay, which holds an integrated (or ‘batch-corrected’) expression matrix for all cells, enabling them to be jointly analyzed.
 
@@ -142,11 +133,11 @@ hu_integ
 ch_integ <- IntegrateData(anchorset = anchors_ch)
 ch_integ
 ```
-Now, the number of features has also been changed to 2000 in each object and the active assay is set to 'integrated'. The original unmodified data still resides in the 'RNA' assay. 
+Now, the number of features has also been changed to 2000 in each object and the active assay is set to `integrated`. The original unmodified data still resides in the `RNA` assay. 
 
 # Scaling the data
 
-As this integrated assay is already normalized and the variable features are identified, we can continue with scaling, a linear transformation that is a standard pre-processing step prior to dimensional reduction techniques like PCA. The ScaleData() function shifts the expression of each gene, so that the mean expression across cells is 0 and scales the expression of each gene, so that the variance across cells is 1, so highly-expressed genes do not dominate. The results of this are stored in hu_integ[["RNA"]]\@scale.data
+As this integrated assay is already normalized and the variable features are identified, we can continue with scaling, a linear transformation that is a standard pre-processing step prior to dimensional reduction techniques like PCA. The `ScaleData()` function shifts the expression of each gene, so that the mean expression across cells is 0 and scales the expression of each gene, so that the variance across cells is 1, so highly-expressed genes do not dominate. The results of this are stored in `hu_integ[["RNA"]]@scale.data`
 
 
 ```{r}
@@ -162,13 +153,13 @@ hu_integ
 ch_integ <- RunPCA(ch_integ, verbose = FALSE)
 ch_integ
 ```
-Now, the Seurat object contains one dimensional reduction: pca.
+Now, the `Seurat` object contains `1 dimensional reduction: pca`.
 
 # Determine the dimensionality of the dataset
 To overcome the extensive technical noise in any single feature for scRNA-seq data, Seurat clusters cells based on their PCA scores, with each PC essentially representing a ‘metafeature’ that combines information across a correlated feature set. The top principal components therefore represent a robust compression of the dataset. However, how many components should we choose to include? To answer this question, we'll consider three approaches below.
 
 ### First approach
-Seurat provides several useful ways of visualizing both cells and features that define the PCA, including VizDimReduction(), DimPlot(), and DimHeatmap(). In particular **DimHeatmap()** allows for easy exploration of the primary sources of heterogeneity in a dataset, and can be useful when trying to decide which PCs to include for further downstream analyses. 
+Seurat provides several useful ways of visualizing both cells and features that define the PCA, including `VizDimReduction()`, `DimPlot()`, and `DimHeatmap()`. In particular `DimHeatmap()` allows for easy exploration of the primary sources of heterogeneity in a dataset, and can be useful when trying to decide which PCs to include for further downstream analyses. 
 
 For instance, let's visualize the first and last PC.
 
@@ -184,7 +175,7 @@ The first PC shows a clear heterogeneity, while the last one doesn't. The cutoff
 
 As next approach, we randomly permute a subset of the data (1% by default) and rerun PCA, constructing a ‘null distribution’ of feature scores, and repeat this procedure. We identify ‘significant’ PCs as those who have a strong enrichment of low p-value features. This implements a statistical test based on a random null model, but is time-consuming for large datasets. 
 
-Determine stastistical significance of PCA scores using JackStraw(), compute JackStraw scores significance using ScoreJAckStraw. JackStrawPlot() function provides a visualization tool for comparing the distribution of p-values for each PC with a uniform distribution (dashed line). ‘Significant’ PCs will show a strong enrichment of features with low p-values (solid curve above the dashed line).
+Determine stastistical significance of PCA scores using `JackStraw()`, compute JackStraw scores significance using ScoreJAckStraw. `JackStrawPlot()` function provides a visualization tool for comparing the distribution of p-values for each PC with a uniform distribution (dashed line). ‘Significant’ PCs will show a strong enrichment of features with low p-values (solid curve above the dashed line).
 
 This takes up to 5 min
 ```{r}
@@ -202,7 +193,7 @@ Although both first and last PCs have a significant p-value (< 0.05), the PC1 sh
 
 ### Last approach
 
-Last approach is an alternative heuristic method generating an **Elbow plot**, which ranks the principle components based on the percentage of variance explanined by each one. 
+Last approach is an alternative heuristic method generating an `Elbow plot`, which ranks the principle components based on the percentage of variance explained by each one. 
 
 
 ```{r}
@@ -215,11 +206,11 @@ ElbowPlot(ch_integ, ndims = 50)
 
 Which PC should be the threshold to define the cutoff?
 
-Hint1: Some are difficult to distinguish from background noise for a dataset of this size without prior knowledge. We advise to set the cutoff on the higher side.
-Hint2: JackStrawPlot() may not return a clear PC cutoff, please focus on a sharp drop-off in significance.
-Hint3: Please take a look in how many PCs the majority of true signal is captured in ElbowPlot()
+Hint1: Some are difficult to distinguish from background noise for a dataset of this size without prior knowledge. Recommend to set the cutoff on the higher side.
+Hint2: `JackStrawPlot()` may not return a clear PC cutoff, please focus on a sharp drop-off in significance.
+Hint3: Please take a look in how many PCs the majority of true signal is captured in `ElbowPlot()`
 
-After deciding the parameter, rerun the RunPCA() with defined npcs.
+After deciding the parameter, rerun the `RunPCA()` with defined npcs.
 ```{r eval=FALSE}
 hu_integ <- RunPCA(hu_integ, npcs = [number of pca of your choice], verbose = FALSE)
 ch_integ <- RunPCA(ch_integ, npcs = [number of pca of your choice], verbose = FALSE)
@@ -231,9 +222,9 @@ ch_integ <- RunPCA(ch_integ, npcs = 20, verbose = FALSE)
 ```
 
 # Cluster the cells
-we first construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods. This step is performed using the FindNeighbors() function, and takes as input the previously defined dimensionality of the dataset (first x PCs how you decided).
+we first construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods. This step is performed using the `FindNeighbors()` function, and takes as input the previously defined dimensionality of the dataset (first x PCs how you decided).
 
-The FindClusters() function iteratively groups cells together, with the goal of optimizing the standard modularity function, and contains a resolution parameter that sets the ‘granularity’ of the downstream clustering, with increased values leading to a greater number of clusters. The clusters can be found using the Idents() function.
+The `FindClusters()` function groups cells together, with the goal of optimizing the standard modularity function, and contains a resolution parameter that sets the ‘granularity’ of the downstream clustering, with increased values leading to a greater number of clusters. The clusters can be found using the `Idents()` function.
 
 ```{r eval=FALSE}
 hu_integ <- FindNeighbors(hu_integ, dims = 1:[number of pca of your choice])
@@ -260,7 +251,7 @@ head(Idents(ch_integ), 5)
 
 # Run non-linear dimensional reduction (UMAP/tSNE)
 
-Seurat offers two major non-linear dimensional reduction techniques, such as tSNE and UMAP, to visualize and explore these datasets. The goal of these algorithms is to learn the underlying manifold of the data in order to place similar cells together in low-dimensional space. Cells within the graph-based clusters determined above should co-localize on these dimension reduction plots. As input to the UMAP and tSNE, we'll use the same PCs as input to the clustering analysis.
+Seurat offers two major non-linear dimensional reduction techniques, such as `UMAP` and `tSNE`, to visualize and explore these datasets. The goal of these algorithms is to learn the underlying manifold of the data in order to place similar cells together in low-dimensional space. Cells within the graph-based clusters determined above should co-localize on these dimension reduction plots. As input to the `UMAP` and `tSNE`, we'll use the same PCs as input to the clustering analysis.
 
 ### UMAP (Uniform Manifold Approximation and Projection)
 
@@ -314,13 +305,13 @@ DimPlot(ch_integ, reduction = "tsne")
 
 # Identify conserved cell type markers
 
-Markers define clusters via differential expression. By default, it identifies positive and negative markers of a single cluster (specified in ident.1), compared to all other cells. FindAllMarkers() automates this process for all clusters, but you can also test groups of clusters vs. each other, or against all cells. The FindAllMarkers() function has three important arguments which provide thresholds for determining whether a gene is a marker:
+Markers define clusters via differential expression. By default, it identifies positive and negative markers of a single cluster (specified in ident.1), compared to all other cells. `FindAllMarkers()` automates this process for all clusters, but you can also test groups of clusters vs. each other, or against all cells. The `FindAllMarkers()` function has three important arguments which provide thresholds for determining whether a gene is a marker:
 
-* **min.pct**: This determines the fraction of cells in either group the feature has to be expressed in to be included in the analysis. It's meant to remove lowly expressed genes. The default is 0.1 and this means at least 10 % of cells in cluster x or all other clusters must express the gene. The lower the value, the longer computing time. If this is set to high value, many false positive could be included due to the fact that not all genes are detected in all cells (even if it is expressed)
+* `min.pct`: This determines the fraction of cells in either group the feature has to be expressed in to be included in the analysis. It's meant to remove lowly expressed genes. The default is 0.1 and this means at least 10 % of cells in cluster x or all other clusters must express the gene. The lower the value, the longer computing time. If this is set to high value, many false positive could be included due to the fact that not all genes are detected in all cells (even if it is expressed)
 
-* **min.diff.pct**: Minimum percent difference between the percent of cells expressing the gene in the cluster and the percent of cells expressing gene in all other clusters combined. This will downsample each identity class to have no more cells than whatever this is set to. The default is -Inf and this means no difference threshold is set. The lower the value, the longer computing time.  
+* `min.diff.pct`: Minimum percent difference between the percent of cells expressing the gene in the cluster and the percent of cells expressing gene in all other clusters combined. This will downsample each identity class to have no more cells than whatever this is set to. The default is -Inf and this means no difference threshold is set. The lower the value, the longer computing time.  
 
-* **logfc.threshold**: Minimum log2 foldchange for average expression of gene in cluster relative to the average expression in all other clusters combined. The default is 0.25 and this means the average log2 foldchange should be at least 0.25. The lower the value, the longer computing time. If this is set to high value, many weak signals could be missed.
+* `logfc.threshold`: Minimum log2 foldchange for average expression of gene in cluster relative to the average expression in all other clusters combined. The default is 0.25 and this means the average log2 foldchange should be at least 0.25. The lower the value, the longer computing time. If this is set to high value, many weak signals could be missed.
 
 For performing differential expression after integration, we switch back to the original
 ```{r}
@@ -347,7 +338,7 @@ sum(Markers_ch$avg_log2FC < 0.25)
 Markers_ch %>% count(cluster)
 ```
 
-Let's take a look into the marker expression. For that, we'll collect top markers with lowest p-value per cluster
+Let's take a look into the marker expression. For that, we'll collect top 2 markers with lowest p-value per cluster
 
 ```{r}
 top2_hu <- Markers_hu %>%
@@ -361,9 +352,9 @@ top2_ch <- Markers_ch %>%
 top2_ch
 ```
 
-Seurat package provides several tools for visualizing marker expression. VlnPlot() (shows expression probability distributions across clusters), and FeaturePlot() (visualizes feature expression on a tSNE or PCA plot) are our most commonly used visualizations. Also, RidgePlot(), CellScatter(), and DotPlot() are available.
+`Seurat` package provides several tools for visualizing marker expression. `VlnPlot()` (shows expression probability distributions across clusters), and `FeaturePlot()` (visualizes feature expression on a tSNE or PCA plot) are our most commonly used visualizations. Also, `RidgePlot()`, `CellScatter()`, and `DotPlot()` are available.
 
-Here, we look at the expression level of the top 2 markers with lowest p-value in cluster 0. In case of using FeaturePlot(), the default is set to umap reduction. 
+Here, we look at the expression level of the top 2 markers with lowest p-value in cluster 0. In case of using `FeaturePlot()`, the default is set to umap reduction. 
 
 ```{r}
 VlnPlot(hu_integ, features = top2_hu %>% filter(cluster %in% "0") %>% pull(-1))
@@ -381,7 +372,7 @@ DimPlot(hu_integ, reduction = "tsne")
 FeaturePlot(ch_integ, features = top2_ch %>% filter(cluster %in% "0") %>% pull(-1), reduction = "tsne")
 DimPlot(ch_integ, reduction = "tsne")
 ```
-Using Dotplot(), we can get a more comprehensive overview of marker expressions by providing the top 2 markers in all clusters. 
+Using `Dotplot()`, we can get a more comprehensive overview of marker expressions by providing the top 2 markers in all clusters. 
 
 ```{r}
 DotPlot(hu_integ, features = unique(top2_hu %>%  pull(-1)), cols = c("blue", "red"), dot.scale = 8) +
@@ -392,9 +383,9 @@ DotPlot(ch_integ, features = unique(top2_ch %>%  pull(-1)), cols = c("blue", "re
 
 ## Excercises
 
-Play with the three major arguments of FindAllMarkers() function! For each task, check the computing time with Sys.time() and visualize the marker expression with a different number of top markers (2, 5, or even 10!)
+Play with the three major arguments of `FindAllMarkers()` function! For each task, check the computing time with `Sys.time()` and visualize the marker expression with a different number of top markers (2, 5, or even 10!)
 
-1. Try to include more genes per cluster by adjusting the minimun value of the average log2 foldchange. Does it take longer than the code in the tutorial? How many markers are detected in each cluster? Do clusters contain more specific markers? 
+1. Try to include more genes per cluster by adjusting the minimum value of the average log2 foldchange. Does it take longer than the code in the tutorial? How many markers are detected in each cluster? Do clusters contain more specific markers? 
 
 2. Try to include less genes per cluster by excluding lowly expressed genes with less than 50 % of cells in cluster x or all other clusters must express the gene. Does it take longer than the code in the tutorial? How many markers are detected in each cluster? Do clusters contain more specific markers? 
 
@@ -402,7 +393,7 @@ Play with the three major arguments of FindAllMarkers() function! For each task,
 
 # Assigning cell type identity to clusters
 
-After identifying cell type markers in each cluster, it's also important to assign cell type identity to clusters. Getting canonical markers to known cell types still challenging. Depending on source of cells, e.g. brain or heart, or species, e.g. human or drosophila, there're various databases and studies for markers. In this tutorial, we'll use a table containing cell types and corresponding markers based on a previous scRNA-seq study.
+After identifying cell type markers in each cluster, it's also important to assign cell type identity to clusters. Getting canonical markers to known cell types still challenging. Depending on source of cells, e.g. brain or heart, or species, e.g. human or drosophila, there are various databases and studies for markers. In this tutorial, we'll use a table containing cell types and corresponding markers based on a previous scRNA-seq study.
 
 Import the table containig marker information
 ```{r}
@@ -456,6 +447,26 @@ names(new.cluster.ids_ch) <- levels(ch_integ)
 ch_integ <- RenameIdents(ch_integ, new.cluster.ids_ch)
 DimPlot(ch_integ, reduction = "umap")
 DimPlot(ch_integ, reduction = "tsne")
+```
+
+## Exercises 
+
+Improve this approach. You can either rewrite the function or come up with a completely different way to achieve the goal. The goal is to assign the top 10 markers in `top10_hu` and `top10_ch` to cell types of `CTmarkers` and select the top cell type that are mostly assigned by the 10 markers.
+
+```{r eval=FALSE}
+CTretrieve <- function(x){
+  cluster <- c()
+  for(i in 1:length(levels(x$cluster))){
+    top10 <- x %>% filter(cluster %in% levels(x$cluster)[i]) %>% pull(-1)
+    cluster <- c(cluster, CTmarkers %>% 
+                  filter(gene %in% top10) %>% 
+                  count(cluster) %>% 
+                  arrange(desc(n)) %>% 
+                  slice(1) %>% 
+                  pull(1))
+  }
+  return(cluster)
+}
 ```
 
 
