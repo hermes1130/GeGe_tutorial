@@ -35,7 +35,7 @@ Please download/clone a [GitHub repository](https://github.com/hermes1130/GeGe_t
 
 # Short background for the dataset
 
-We will work with a dataset produced by [Snyder-Mackler et al. 2009](https://www.pnas.org/doi/10.1073/pnas.1811758115). They investigated immune responses in rhesus macaque groups. The study included several groups of macaques. Each group consistent of five individuals of different ranks. They investigated whether the immune response depends on the rank of an individual.  
+We will work with a dataset produced by [Snyder-Mackler et al. 2016](https://www.science.org/doi/10.1126/science.aah3580). They investigated immune responses in rhesus macaque groups. The study included several groups of macaques. Each group consistent of five individuals of different ranks. They investigated whether the immune response depends on the rank of an individual.  
 
 RNA of blood cells from each individual was sequenced with RNA-Seq on the Illumina platform. Reads were mapped to the rhesus macaque genome and counted to obtain gene expression data in form of raw counts per gene. We will use that dataset to calculate differential gene expression and co-expression networks.  
 Read in your data.
