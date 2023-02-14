@@ -31,7 +31,7 @@ Please install the following packages before you start this tutorial:
 
 
 #### Tutorial files
-Please download/clone a [GitHub repository](https://github.com/hermes1130/GeGe_tutorial). This is a public repository, so please don't commit/push anything. Tutorial files are located in the `files` directory.
+Please download tutorial files (.html) from blackboard/Kursmaterial. Files needed for tutorials are located in the `files` directory.
 
 # Short background for the dataset
 
@@ -265,15 +265,15 @@ write.csv(as.data.frame(edgeR_DEgenesTable), file="edgeR_DEgenes_condition_LPS_N
 
   
   
-## Excercises
+## Exercise 1
 
-1. Which method calls more significant genes, `DESeq2` or `edgeR`?
+1.1. Which method calls more significant genes, `DESeq2` or `edgeR`?
 
-2. How many genes were called differentially expressed with both methods?
+1.2. How many genes were called differentially expressed with both methods?
 Hint1: check out `%in%`
 Hint2: are p-values adjusted for both methods?
 
-3. A venn diagram is also a good way to visualize overlap. Check out the `eulerr` package (Note, this package is not included for pre-installation before the tutorial, so work with your neighbor who has faster machine to install this package).
+1.3. A venn diagram is also a good way to visualize overlap. Check out the `eulerr` package (Note, this package is not included for pre-installation before the tutorial, so work with your neighbor who has faster machine to install this package).
   
     
     
@@ -337,19 +337,19 @@ To show the comparisons that were done use the function `resultNames()` on the `
 resultsNames(dds_interact)
 ```
 
-###Excercises
+### Exercise 2
 
 Perform the following five comparisons. To do so, check the help for `?results`. Hint: Most important are to see what the contrast argument wants and the examples at the bottom of the help pages.
 
-1. The main effect (treatment vs. control) for first group (Rank 1). 
+2.1. The main effect (treatment vs. control) for first group (Rank 1). 
 
-2. Rank 1 vs. Rank 5. 
+2.2. Rank 1 vs. Rank 5. 
 
-3. The condition effect for Rank 2 (takes a few seconds). This is the main effect plus the interaction term.
+2.3. The condition effect for Rank 2 (takes a few seconds). This is the main effect plus the interaction term.
 
-4. Interaction term for condition effect in Rank 2 vs. Rank 5 to find out whether the condition effect is different between these two ranks.
+2.4. Interaction term for condition effect in Rank 2 vs. Rank 5 to find out whether the condition effect is different between these two ranks.
 
-5. How many genes differ in their change between treatment vs. control between Rank 2 and Rank 5? Hint: To summarize the results and see what the columns in the results object mean, you need to assign the output of results to a variable.
+2.5. How many genes differ in their change between treatment vs. control between Rank 2 and Rank 5? Hint: To summarize the results and see what the columns in the results object mean, you need to assign the output of results to a variable.
 
 
 
@@ -655,9 +655,9 @@ write.table(NC_genes, 'CoDiNA_NC.txt', quote = F, row.names = F)
 write.table(LPS_genes, 'CoDiNA_LPS.txt', quote = F, row.names = F)
 ```
 
-### Excercise
+### Exercise 3
 
-1. Make a wTO network (one for NC and one for LPS) that has all differentially expressed genes as nodes taking into account only all differentially expressed genes. Compare the networks using `CoDiNA`. How many nodes are common, LPS specific, or NC specific? Save a list of their gene names.
+3.1. Make a wTO network (one for NC and one for LPS) that has all differentially expressed genes as nodes taking into account only all differentially expressed genes. Compare the networks using `CoDiNA`. How many nodes are common, LPS specific, or NC specific? Save a list of their gene names.
 
 
 # Gene Ontology (GO) Enrichment analysis
@@ -792,6 +792,21 @@ library("Rgraphviz")
 showSigOfNodes(GOdata, score(resultFisher), firstSigNodes = 5, useInfo = 'all')
 ```
 
-### Excercise
+### Excercise 4
 
-1. Perform the Gene Ontology Enrichment analysis for the ontology "Biological Process (BP")
+4.1. Perform the Gene Ontology Enrichment analysis for the ontology "Biological Process (BP")
+
+## Submission of your tutorial
+Please submit your script containing codes for exercises in the [FU box](https://box.fu-berlin.de/s/naQ4TKN6Xz4WgAs)
+
+* Name of your script (.r/.rmd): 1_Givenname_Surname_MatrikelNr
+
+* Please indicate in the script which tutorial you're submitting, e.g. tutorial day 1
+
+* Please indicate in the script the exercise number, e.g. 1-1
+
+* Please comment your code, e.g. To retrieve x, function y
+
+
+
+
